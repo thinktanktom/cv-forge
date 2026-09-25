@@ -1,0 +1,41 @@
+# AGENTS.md — cv-forge
+
+## What this is
+A CLI that renders a job-specific CV from a structured profile. Public repo,
+fictional fixtures, no personal data.
+
+## Commands
+- `npm ci` — install
+- `npm run lint` — `tsc --noEmit`
+- `npm test` — vitest (unit; no browser)
+- `npm run test:render` — fidelity tests; **requires `nix develop`** (chromium + Carlito)
+
+## Layout
+- `src/types.ts` — the contracts. Read this first.
+- `src/selector.ts` — engine registry.
+- `src/selectors/{tag,jev,claude}.ts` — the three engines.
+- `src/render.ts` — plan + template -> html/pdf/docx.
+- `src/ledger.ts`, `src/cli.ts`
+- `templates/` — `sheet.html.eta` carries the tuned print CSS verbatim.
+- `fixtures/persona/` — fictional profile; all tests use it.
+- `docs/jev-api.md` — empirically derived Jev schema.
+
+## Non-negotiables
+1. **`SelectInput` carries no identity.** The selection leg is the only thing
+   that leaves the machine. Widening that type is a privacy decision.
+2. **`render` validates every bullet id** against the profile and fails loudly
+   on an unknown one. This is the anti-invention guard; do not soften it.
+3. **The print CSS in `templates/sheet.html.eta` is tuned.** It fits A4 in one
+   page. Do not restyle it; parameterise it. Accent colour and two density
+   nudges are the only intended variables.
+4. **`tag` must never require network or credentials.** It is the fallback that
+   makes the other engines optional.
+5. Personal data lives in `$CV_DATA` (a separate private repo). Never read or
+   write it from tests, and never commit anything under `profile/` or
+   `applications/`.
+
+## Off limits
+- `flake.nix` pinning without checking that the browser/font wiring still works
+  (`npm run test:render`).
+- `package.json` `playwright-core` version — it must match nixpkgs
+  `playwright-driver` (currently 1.63.0) or the driver refuses to start.

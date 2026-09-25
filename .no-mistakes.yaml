@@ -1,0 +1,51 @@
+# .no-mistakes.yaml — cv-forge (Node / TypeScript)
+agent: claude
+
+commands:
+  prepare: "npm ci --no-audit --no-fund"
+  test:    "npm test"
+  lint:    "npm run lint --if-present"
+
+auto_fix:
+  review: 0
+  test: 0
+
+protected_paths:
+  - ".claude/skills/**"
+  - ".claude/agents/**"
+  - "**/.env"
+  - "**/.env.*"
+  - "package-lock.json"
+  - "**/*.pem"
+  - "**/*.key"
+  - "flake.lock"
+
+review:
+  path_instructions:
+    - path: "src/types.ts"
+      instructions: >
+        SelectInput is deliberately identity-free: the selection leg is the only
+        thing that leaves the machine. Flag any change that widens it to carry a
+        name, email, phone, address or link as a privacy regression, not a
+        refactor.
+    - path: "src/selectors/**"
+      instructions: >
+        Every engine must satisfy the same Selector contract and be exercised by
+        the shared golden-set test. Flag an engine that skips it.
+    - path: "src/**"
+      instructions: >
+        TypeScript ESM. Review only the diff. Do not request coverage for
+        untouched code.
+    - path: "**/*.test.ts"
+      instructions: >
+        Tests must assert observable behavior (return values, state, side
+        effects), not the presence of strings in source.
+    - path: "fixtures/**"
+      instructions: >
+        Fictional persona used so the public repo's tests run without personal
+        data. Flag anything resembling a real person's details.
+
+ignore_patterns:
+  - "dist/**"
+  - "coverage/**"
+  - "node_modules/**"

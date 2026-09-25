@@ -1,0 +1,33 @@
+# .github/workflows/ci.yml — Node / TypeScript.
+# Hand-written on purpose: `no-mistakes ci-workflow` emits a Go-shaped template
+# regardless of the repo's language. Keep the run: lines in sync with the
+# commands.{prepare,lint,test} in .no-mistakes.yaml so the gate's ci step
+# monitors the same checks it ran locally.
+name: CI
+
+on:
+  push:
+    branches: ['main']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm            # pnpm: cache: pnpm (after pnpm/action-setup) | yarn: cache: yarn
+      - run: npm ci --no-audit --no-fund
+      - name: Lint
+        run: npm run lint --if-present
+      - name: Test
+        run: npm test

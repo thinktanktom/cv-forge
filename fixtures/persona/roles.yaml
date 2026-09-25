@@ -1,0 +1,36 @@
+# FICTIONAL fixture data.
+- id: northwind
+  company: Northwind Protocol
+  title: Lead Smart Contract Engineer
+  start: "2023-01"
+  end: null
+  location: Remote
+  bullets:
+    - id: northwind.staking
+      text: Built and deployed a Solidity staking contract on Base, with a Foundry invariant suite covering reward accrual and slashing.
+      tags: [solidity, foundry, base, defi]
+    - id: northwind.audit-remediation
+      text: Closed 14 findings across two audit rounds, including a reentrancy path in the reward claim.
+      tags: [audit, security, solidity]
+    - id: northwind.multichain
+      text: Shipped multi-chain deploy tooling covering six EVM networks with deterministic addresses.
+      tags: [evm, tooling, deploys]
+    - id: northwind.oracle
+      text: Replaced a single-source price feed with an aggregated oracle and staleness checks.
+      tags: [oracles, solidity, security]
+- id: harbour
+  company: Harbour Labs
+  title: Full Stack Developer
+  start: "2021-04"
+  end: "2022-12"
+  location: Remote
+  bullets:
+    - id: harbour.dashboard
+      text: Built a React dashboard for internal analytics, cutting a manual reporting step from hours to minutes.
+      tags: [react, typescript, frontend]
+    - id: harbour.api
+      text: Designed and shipped a REST API serving 40 endpoints behind token auth.
+      tags: [node, api, backend]
+    - id: harbour.ci
+      text: Introduced CI that blocked merges on failing tests, taking the main-branch break rate to near zero.
+      tags: [ci, tooling]

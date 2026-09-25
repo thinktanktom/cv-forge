@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.log
+.env
+.env.*
+!.env.example
+# Never let personal data land in the public repo. cv-data lives elsewhere.
+profile/
+applications/
+out/

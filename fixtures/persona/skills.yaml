@@ -1,0 +1,4 @@
+# FICTIONAL fixture data.
+- { label: Languages, items: [Solidity, TypeScript, Rust, Python] }
+- { label: Contracts, items: [ERC-20, ERC-721, upgradeable proxies, AMMs] }
+- { label: Tooling,   items: [Foundry, Hardhat, Playwright, GitHub Actions] }

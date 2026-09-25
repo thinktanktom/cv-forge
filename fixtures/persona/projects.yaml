@@ -1,0 +1,8 @@
+# FICTIONAL fixture data.
+- id: openfoo
+  name: openzeppelin-example
+  url: "https://example.invalid/pr/1"
+  bullets:
+    - id: openfoo.merged
+      text: Merged a fix for an off-by-one in a vesting schedule helper.
+      tags: [open-source, solidity]
