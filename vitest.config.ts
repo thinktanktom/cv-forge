@@ -1,13 +1,18 @@
 import { defineConfig } from 'vitest/config';
 
+/**
+ * Default config for `npm test` / CI: no browser, no `nix develop` needed.
+ *
+ * Two things are excluded deliberately:
+ *   - `test/render/**` needs Chromium + Carlito; it runs via
+ *     `vitest.render.config.ts` / `npm run test:render` instead.
+ *   - `.claude/**` holds agent worktrees. Without excluding it, a run from the
+ *     repo root walks into other branches' working trees and reports their
+ *     failures as this branch's.
+ */
 export default defineConfig({
   test: {
     include: ['test/**/*.test.ts'],
-    // Agent worktrees live under .claude/worktrees/. Without this, `npm test`
-    // from the root walks into other branches' working trees and runs their
-    // tests — including browser-dependent ones that are meant to be excluded
-    // from the default run. It reports failures that have nothing to do with
-    // the branch you are on.
-    exclude: ['node_modules/**', 'dist/**', '.claude/**'],
+    exclude: ['test/render/**', 'node_modules/**', 'dist/**', '.claude/**'],
   },
 });

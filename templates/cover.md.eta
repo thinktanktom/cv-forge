@@ -1,0 +1,6 @@
+<%~ it.identity.name %>
+<%~ it.identity.email %><% if (it.identity.phone) { %> · <%~ it.identity.phone %><% } %><% if (it.identity.location) { %> · <%~ it.identity.location %><% } %>
+
+<%~ it.date %>
+
+<%~ it.coverLetter %>
