@@ -8,3 +8,5 @@ dist/
 profile/
 applications/
 out/
+# Agent worktrees are working trees of THIS repo — never commit them.
+.claude/worktrees/

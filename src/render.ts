@@ -10,7 +10,7 @@
  */
 
 import { execFile } from 'node:child_process';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
@@ -43,6 +43,24 @@ const eta = new Eta({ views: templatesDir });
  * a `Bullet.id` in the profile (roles or projects). Must run, and must
  * succeed, before any rendering happens.
  */
+/**
+ * Resolves `plan.skillGroups` to actual groups, preserving the plan's order.
+ * Throws on an unknown label rather than silently dropping a section — a CV
+ * that quietly loses its skills block is worse than one that fails to build.
+ */
+export function selectSkillGroups(plan: Plan, profile: Profile): readonly SkillGroup[] {
+  if (plan.skillGroups === undefined) return profile.skills;
+  const byLabel = new Map(profile.skills.map((g) => [g.label, g]));
+  const unknown = plan.skillGroups.filter((label) => !byLabel.has(label));
+  if (unknown.length > 0) {
+    throw new Error(
+      `plan.skillGroups names ${unknown.length} skill group(s) that are not in the profile: ` +
+        `${unknown.join(', ')}. Known groups: ${profile.skills.map((g) => g.label).join(', ')}.`,
+    );
+  }
+  return plan.skillGroups.map((label) => byLabel.get(label) as SkillGroup);
+}
+
 export function validatePlanBullets(plan: Plan, profile: Profile): void {
   const knownIds = new Set<string>();
   for (const role of profile.roles) {
@@ -185,7 +203,7 @@ export function buildSheetContext(plan: Plan, profile: Profile): SheetTemplateDa
     ...(plan.summary !== undefined ? { summary: plan.summary } : {}),
     contactPrimary,
     contactLinks,
-    skills: profile.skills,
+    skills: selectSkillGroups(plan, profile),
     roles,
     projects,
     education: profile.education,
@@ -289,6 +307,31 @@ export async function renderPdf(html: string, pdfPath: string): Promise<void> {
 }
 
 /* ------------------------------------------------------------------ */
+/* Page-count guard                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Page count of a Chromium-produced PDF, without shelling out.
+ *
+ * The font assertion in `renderPdf` catches the most common *cause* of a
+ * two-page CV, but not the thing itself: too much content overflows just as
+ * silently. This reads the page-tree root's `/Count`. Verified against
+ * `pdfinfo` on a one-page and a two-page render.
+ */
+export function pdfPageCount(pdf: Buffer): number {
+  const text = pdf.toString('latin1');
+  let max = 0;
+  for (const m of text.matchAll(/\/Type\s*\/Pages\b[^>]*?\/Count\s+(\d+)/g)) {
+    max = Math.max(max, Number(m[1]));
+  }
+  if (max === 0) {
+    for (const m of text.matchAll(/\/Count\s+(\d+)/g)) max = Math.max(max, Number(m[1]));
+  }
+  if (max === 0) throw new Error('Could not determine the page count of the rendered PDF.');
+  return max;
+}
+
+/* ------------------------------------------------------------------ */
 /* ATS .docx (shells out to pandoc)                                    */
 /* ------------------------------------------------------------------ */
 
@@ -311,6 +354,12 @@ export async function renderDocx(htmlPath: string, docxPath: string): Promise<vo
 export interface RenderOptions {
   /** Application directory to write outputs into, e.g. `applications/<slug>`. */
   readonly outDir: string;
+  /**
+   * Hard ceiling on the rendered page count. The template is tuned to fit one
+   * A4 sheet, and overflowing is silent, so this defaults to 1 and throws
+   * rather than quietly handing over a two-page CV. Raise it deliberately.
+   */
+  readonly maxPages?: number;
   /** Overrides the cover letter date (mainly for deterministic tests). */
   readonly now?: Date;
 }
@@ -339,6 +388,18 @@ export async function render(plan: Plan, profile: Profile, options: RenderOption
 
   const pdfPath = path.join(options.outDir, 'cv.pdf');
   await renderPdf(html, pdfPath);
+
+  const maxPages = options.maxPages ?? 1;
+  const pages = pdfPageCount(await readFile(pdfPath));
+  if (pages > maxPages) {
+    throw new Error(
+      `Rendered CV is ${pages} pages; the template is tuned for ${maxPages}. ` +
+        `The PDF was left at ${pdfPath} so you can see what overflowed. ` +
+        'Drop a bullet or shorten the summary in plan.json — do not restyle the ' +
+        'template, whose density is what makes one page fit (AGENTS.md rule 3). ' +
+        'Pass maxPages deliberately if you really want a longer CV.',
+    );
+  }
 
   const docxPath = path.join(options.outDir, 'cv.docx');
   await renderDocx(htmlPath, docxPath);

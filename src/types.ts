@@ -112,5 +112,15 @@ export interface Plan {
   headline: string;
   summary?: string;
   bullets: PlanBullet[];
+  /**
+   * Skill group labels to render, in this order. Omit to render every group.
+   *
+   * A full profile accumulates groups for every direction a career has taken.
+   * Printing all of them on a specialised CV spends a third of the sheet on
+   * skills the reader did not ask about, which is vertical space a bullet
+   * could have used. Unknown labels are rejected by `render`, the same way
+   * unknown bullet ids are.
+   */
+  skillGroups?: string[];
   coverLetter?: string;
 }
