@@ -70,3 +70,31 @@ Auth: `Authorization: Bearer $OPENROUTER_API_KEY`
 - The prompt field is `instructions`, not `question`.
 - Probabilities vary slightly between calls — threshold on bands, not equality.
 - Calibration is an aggregate property; any single answer can be wrong.
+
+## Which `state` shape to use (measured 2026-09-25)
+
+`state` is typed `string | record | array` and the docs do not say what belongs
+there, so the two plausible shapes were A/B'd live against
+`fixtures/persona` + `fixtures/persona/jd-smart-contract.md`, where the
+relevant bullets are known in advance.
+
+| shape | `state` | `instructions` | clean split |
+|---|---|---|---|
+| **A (used)** | the raw JD text | the bullet text + tags | **3/3 runs** |
+| B | `{ jd, bullets }` | `"Bullet <id> is relevant…"` | 0/3 runs |
+
+"Clean split" = the lowest-scoring relevant bullet still outranks the
+highest-scoring irrelevant one.
+
+Shape B consistently misranked `openfoo.merged` — a genuine open-source
+Solidity contribution — below `harbour.ci`, because a bullet referenced only by
+id in the question gets less attention than the same text inline. **Put the
+bullet in the question, not in the state.**
+
+### Caveat: cut by rank, not by threshold
+
+Shape A's margin is real but thin — separations of 0.01, 0.02 and 0.05 across
+three runs. Combined with the documented call-to-call drift, that means an
+absolute cutoff (`score > 0.6`) is fragile. Take the top N by rank and surface
+anything near the boundary for review; do not treat the probability as a
+calibrated pass mark for a single bullet.
