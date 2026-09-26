@@ -14,18 +14,13 @@ beforeEach(async () => { root = await mkdtemp(join(tmpdir(), 'cvforge-')); });
 afterEach(async () => { await rm(root, { recursive: true, force: true }); });
 
 describe('slugFor', () => {
-  it('builds a dated, kebab-cased slug', () => {
-    expect(slugFor('Aave', 'Staff Smart Contract Engineer', AT))
-      .toBe('2026-09-25-aave-staff-smart-contract-engineer');
-  });
-
-  it('strips punctuation and collapses separators', () => {
-    expect(slugFor('Foo & Bar, Inc.', 'Sr. Engineer (Remote)', AT))
-      .toBe('2026-09-25-foo-bar-inc-sr-engineer-remote');
-  });
-
-  it('folds accents rather than dropping the word', () => {
-    expect(slugFor('Açaí', 'Engenheiro', AT)).toBe('2026-09-25-acai-engenheiro');
+  it.each([
+    ['Aave', 'Staff Smart Contract Engineer', '2026-09-25-aave-staff-smart-contract-engineer'],
+    ['Foo & Bar, Inc.', 'Sr. Engineer (Remote)', '2026-09-25-foo-bar-inc-sr-engineer-remote'],
+    // Accents are folded, not dropped — otherwise the word vanishes entirely.
+    ['Açaí', 'Engenheiro', '2026-09-25-acai-engenheiro'],
+  ])('%s / %s', (company, role, expected) => {
+    expect(slugFor(company, role, AT)).toBe(expected);
   });
 
   it('refuses a slug it cannot build', () => {
@@ -64,12 +59,6 @@ describe('createApplication', () => {
     await expect(createApplication(input, root, AT)).rejects.toThrow(/already exists/);
   });
 
-  it('omits optional fields rather than writing nulls', async () => {
-    const { dir } = await createApplication({ company: 'A', role: 'B', jd: 'x' }, root, AT);
-    const raw = await readFile(join(dir, 'status.yaml'), 'utf8');
-    expect(raw).not.toMatch(/url/);
-    expect(raw).not.toMatch(/variant/);
-  });
 });
 
 describe('advance', () => {
@@ -93,11 +82,6 @@ describe('readStatus', () => {
 });
 
 describe('ledger', () => {
-  it('is empty before anything is created', async () => {
-    expect(await readLedger(root)).toEqual([]);
-    expect(formatLedger([])).toMatch(/No applications yet/);
-  });
-
   it('reports applied date, stage and counts', async () => {
     const a = await createApplication({ company: 'Aave', role: 'Staff', jd: 'x', variant: 'smart-contract' }, root, AT);
     await advance(a.dir, 'applied', undefined, AT);

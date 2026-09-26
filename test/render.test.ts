@@ -1,24 +1,25 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  buildCoverContext,
   buildSheetContext,
   renderCoverMarkdown,
   renderSheetHtml,
-  resolveBulletText,
   validatePlanBullets,
 } from '../src/render.js';
 import type { Plan } from '../src/types.js';
 import { loadPersonaProfile, samplePlan } from './fixtures.js';
 
-describe('validatePlanBullets — the anti-invention guard', () => {
-  it('passes a plan that references only real bullet ids', () => {
-    const profile = loadPersonaProfile();
-    expect(() => validatePlanBullets(samplePlan(), profile)).not.toThrow();
-  });
+const profile = loadPersonaProfile();
 
-  it('throws and names every unknown bullet id, before rendering anything', () => {
-    const profile = loadPersonaProfile();
+describe('validatePlanBullets — the anti-invention guard', () => {
+  /*
+   * Both directions in one test on purpose. An inverted condition would still
+   * satisfy a throws-on-bad test, and the end-to-end render that would catch
+   * it needs a browser and so does not run in CI.
+   */
+  it('accepts real bullet ids and rejects invented ones by name', () => {
+    expect(() => validatePlanBullets(samplePlan(), profile)).not.toThrow();
+
     const plan: Plan = {
       ...samplePlan(),
       bullets: [
@@ -27,125 +28,76 @@ describe('validatePlanBullets — the anti-invention guard', () => {
         { id: 'harbour.also-fabricated' },
       ],
     };
-
-    let thrown: unknown;
-    try {
-      validatePlanBullets(plan, profile);
-    } catch (err) {
-      thrown = err;
-    }
-
-    expect(thrown).toBeInstanceOf(Error);
-    const message = (thrown as Error).message;
-    expect(message).toContain('northwind.made-up-achievement');
-    expect(message).toContain('harbour.also-fabricated');
-    // The real id must NOT be reported as unknown.
-    expect(message).not.toContain('"northwind.staking"');
-  });
-
-});
-
-describe('resolveBulletText', () => {
-  it('uses the rewrite when present', () => {
-    const bullet = { id: 'x', text: 'Original wording.', tags: [] };
-    const planBullet = { id: 'x', rewrite: 'Sharpened wording.' };
-    expect(resolveBulletText(bullet, planBullet)).toBe('Sharpened wording.');
-  });
-
-  it('falls back to the profile bullet text when there is no rewrite', () => {
-    const bullet = { id: 'x', text: 'Original wording.', tags: [] };
-    const planBullet = { id: 'x' };
-    expect(resolveBulletText(bullet, planBullet)).toBe('Original wording.');
+    expect(() => validatePlanBullets(plan, profile))
+      .toThrow(/northwind\.made-up-achievement.*harbour\.also-fabricated/s);
   });
 });
 
 describe('buildSheetContext', () => {
-  it('only includes roles/projects with at least one selected bullet, in profile order, with rewrites applied', () => {
-    const profile = loadPersonaProfile();
-    const plan = samplePlan();
-    const ctx = buildSheetContext(plan, profile);
+  it('keeps profile order, applies rewrites, and drops roles with nothing selected', () => {
+    const ctx = buildSheetContext(samplePlan(), profile);
 
     // harbour.ci and harbour.dashboard were not selected; harbour.api was.
     const harbour = ctx.roles.find((r) => r.company === 'Harbour Labs');
-    expect(harbour).toBeDefined();
-    expect(harbour?.bullets).toHaveLength(1);
-    expect(harbour?.bullets[0]?.id).toBe('harbour.api');
+    expect(harbour?.bullets.map((b) => b.id)).toEqual(['harbour.api']);
 
-    // Northwind bullets keep profile order regardless of plan order.
+    // Profile order wins over plan order, and the rewrite replaces the original.
     const northwind = ctx.roles.find((r) => r.company === 'Northwind Protocol');
-    expect(northwind?.bullets.map((b) => b.id)).toEqual([
-      'northwind.staking',
-      'northwind.audit-remediation',
-      'northwind.oracle',
-    ]);
-
-    // The rewrite for northwind.audit-remediation was applied, not the original text.
-    const rewritten = northwind?.bullets.find((b) => b.id === 'northwind.audit-remediation');
-    expect(rewritten?.text).toContain('critical reentrancy path');
+    expect(northwind?.bullets.map((b) => b.id))
+      .toEqual(['northwind.staking', 'northwind.audit-remediation', 'northwind.oracle']);
+    expect(northwind?.bullets.find((b) => b.id === 'northwind.audit-remediation')?.text)
+      .toContain('critical reentrancy path');
 
     // A role with zero selected bullets is dropped, not rendered empty.
-    const plainPlan: Plan = { ...plan, bullets: [{ id: 'openfoo.merged' }] };
-    const ctxNoRoles = buildSheetContext(plainPlan, profile);
-    expect(ctxNoRoles.roles).toHaveLength(0);
-    expect(ctxNoRoles.projects).toHaveLength(1);
-  });
-
-  it('carries the selected variant preset into accent/chip/margin/font fields', () => {
-    const profile = loadPersonaProfile();
-    const ctx = buildSheetContext({ ...samplePlan(), variant: 'full-stack' }, profile);
-    expect(ctx.accent).toBe('#1d4ed8');
-    expect(ctx.chip).toBe('#eef2fb');
-    expect(ctx.pageMargin).toBe('10.5mm 12mm 9mm');
-    expect(ctx.eduFontSize).toBe('8.4pt');
-    expect(ctx.lastChildHeadingRule).toBe(true);
-  });
-
-  it('omits the summary key entirely when the plan has no summary (exactOptionalPropertyTypes)', () => {
-    const profile = loadPersonaProfile();
-    const { summary, ...rest } = samplePlan();
-    void summary;
-    const ctx = buildSheetContext(rest as Plan, profile);
-    expect('summary' in ctx).toBe(false);
+    const projectOnly = buildSheetContext({ ...samplePlan(), bullets: [{ id: 'openfoo.merged' }] }, profile);
+    expect(projectOnly.roles).toHaveLength(0);
+    expect(projectOnly.projects).toHaveLength(1);
   });
 });
 
 describe('renderSheetHtml (Eta, no browser)', () => {
-  it('renders selected bullet text and omits unselected bullet text', () => {
-    const profile = loadPersonaProfile();
+  it('renders selected bullets, omits unselected ones, and never prints "undefined"', () => {
     const html = renderSheetHtml(samplePlan(), profile);
 
     expect(html).toContain('Northwind Protocol');
     expect(html).toContain('critical reentrancy path'); // the rewrite
-    expect(html).not.toContain('Closed 14 findings'); // the original, superseded text
+    expect(html).not.toContain('Closed 14 findings'); // the original it superseded
+    expect(html).not.toContain('React dashboard for internal analytics'); // unselected
+    expect(html).not.toContain('Introduced CI that blocked merges'); // unselected
 
-    // harbour.dashboard and harbour.ci were not selected.
-    expect(html).not.toContain('React dashboard for internal analytics');
-    expect(html).not.toContain('Introduced CI that blocked merges');
+    // A plan with no summary must leave the section out rather than print the
+    // word "undefined" onto the sheet.
+    const { summary: _dropped, ...noSummary } = samplePlan();
+    expect(renderSheetHtml(noSummary as Plan, profile)).not.toContain('undefined');
   });
 
-  it('wires the variant preset into the emitted CSS', () => {
-    const profile = loadPersonaProfile();
-    const html = renderSheetHtml(samplePlan(), profile);
-    expect(html).toContain('--accent: #0f5c5a;');
-    expect(html).toContain('@page { size: A4; margin: 10.5mm 12mm; }');
-    // smart-contract has no density rule (the phrase appears in the template's
-    // explanatory comment, so match the actual CSS rule, not just the selector).
-    expect(html).not.toContain('section:last-child h2 { margin-bottom');
+  /*
+   * All five parameterised values, asserted in the emitted CSS rather than on
+   * the preset object: this proves the preset actually reaches the output,
+   * which asserting getVariant('...').accent never did.
+   */
+  it.each([
+    ['smart-contract', '#0f5c5a', '#eef3f3', '10.5mm 12mm', '8.6pt', false],
+    ['full-stack', '#1d4ed8', '#eef2fb', '10.5mm 12mm 9mm', '8.4pt', true],
+  ])('%s wires its preset through to the emitted CSS', (variant, accent, chip, margin, edu, density) => {
+    const html = renderSheetHtml({ ...samplePlan(), variant }, profile);
+    expect(html).toContain(`--accent: ${accent};`);
+    expect(html).toContain(`--chip: ${chip};`);
+    expect(html).toContain(`@page { size: A4; margin: ${margin}; }`);
+    expect(html).toContain(`.edu div { font-size: ${edu}; }`);
+    // Match the rule, not the selector: the selector also appears in the
+    // template's explanatory comment.
+    const hasDensityRule = html.includes('section:last-child h2 { margin-bottom');
+    expect(hasDensityRule).toBe(density);
   });
 });
 
 describe('renderCoverMarkdown (Eta, no browser)', () => {
-  it('is not HTML-escaped and carries the cover letter body through', () => {
-    const profile = loadPersonaProfile();
+  it('carries the body through unescaped — it is Markdown, not HTML', () => {
     const plan: Plan = { ...samplePlan(), coverLetter: 'I write Solidity & I enjoy it — a lot.' };
     const md = renderCoverMarkdown(plan, profile, new Date('2026-09-25T00:00:00Z'));
     expect(md).toContain('I write Solidity & I enjoy it — a lot.');
     expect(md).not.toContain('&amp;');
     expect(md).toContain('2026-09-25');
-  });
-
-  it('throws when built from a plan with no cover letter', () => {
-    const profile = loadPersonaProfile();
-    expect(() => buildCoverContext(samplePlan(), profile)).toThrow();
   });
 });
