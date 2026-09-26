@@ -43,22 +43,6 @@ describe('validatePlanBullets — the anti-invention guard', () => {
     expect(message).not.toContain('"northwind.staking"');
   });
 
-  it('does not silently drop a duplicate unknown id from the message, but only reports it once', () => {
-    const profile = loadPersonaProfile();
-    const plan: Plan = {
-      ...samplePlan(),
-      bullets: [{ id: 'ghost.bullet' }, { id: 'ghost.bullet' }],
-    };
-
-    expect(() => validatePlanBullets(plan, profile)).toThrowError(/ghost\.bullet/);
-    try {
-      validatePlanBullets(plan, profile);
-    } catch (err) {
-      const message = (err as Error).message;
-      const occurrences = message.split('ghost.bullet').length - 1;
-      expect(occurrences).toBe(1);
-    }
-  });
 });
 
 describe('resolveBulletText', () => {

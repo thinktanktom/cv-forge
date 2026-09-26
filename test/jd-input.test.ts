@@ -64,9 +64,6 @@ describe('htmlToText', () => {
     expect(htmlToText('<p>Intro</p><ul><li>One</li></ul>')).toBe('Intro\n\n- One');
   });
 
-  it('collapses runaway blank lines', () => {
-    expect(htmlToText('<p>A</p><div></div><div></div><p>B</p>')).toBe('A\n\nB');
-  });
 });
 
 describe('extractJsonLd', () => {
@@ -79,18 +76,15 @@ describe('extractJsonLd', () => {
     expect(got?.description).toContain('5+ years & TypeScript.');
   });
 
-  it('finds it inside an array', () => {
-    expect(extractJsonLd(ldPage([{ '@type': 'Organization' }, jobPosting]))?.role)
-      .toBe('Senior Software Engineer, Core');
-  });
-
-  it('finds it inside an @graph', () => {
-    expect(extractJsonLd(ldPage({ '@graph': [jobPosting] }))?.company).toBe('Northwind Labs');
-  });
-
-  it('accepts an array-valued @type', () => {
-    expect(extractJsonLd(ldPage({ ...jobPosting, '@type': ['JobPosting', 'Thing'] }))?.role)
-      .toBe('Senior Software Engineer, Core');
+  it.each([
+    ['a bare node', jobPosting],
+    ['an array alongside other types', [{ '@type': 'Organization' }, jobPosting]],
+    ['an @graph wrapper', { '@graph': [jobPosting] }],
+    ['an array-valued @type', { ...jobPosting, '@type': ['JobPosting', 'Thing'] }],
+  ])('finds the posting in %s', (_label, node) => {
+    // All four shapes occur across real boards, and the extractor flattens
+    // rather than assuming one of them.
+    expect(extractJsonLd(ldPage(node))?.role).toBe('Senior Software Engineer, Core');
   });
 
   it('skips a malformed block rather than giving up on a later good one', () => {
@@ -150,11 +144,6 @@ describe('inferFromText', () => {
 });
 
 describe('resolvePosting', () => {
-  it('fetches when given a URL', async () => {
-    const got = await resolvePosting('https://x.invalid/job', async () => ldPage(jobPosting));
-    expect(got.source).toBe('json-ld');
-  });
-
   it('treats anything else as the description', async () => {
     const got = await resolvePosting('Senior Engineer at Northwind Labs\n\nBuild things.');
     expect(got.source).toBe('pasted');

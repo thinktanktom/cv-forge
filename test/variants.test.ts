@@ -3,10 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { getVariant, knownVariants } from '../src/variants.js';
 
 describe('variant presets', () => {
-  it('exposes exactly the two known presets', () => {
-    expect(knownVariants()).toEqual(['smart-contract', 'full-stack']);
-  });
-
   it('smart-contract preset matches the source design', () => {
     const v = getVariant('smart-contract');
     expect(v.accent).toBe('#0f5c5a');

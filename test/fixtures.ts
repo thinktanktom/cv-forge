@@ -44,3 +44,28 @@ export function samplePlan(): Plan {
     ],
   };
 }
+
+/**
+ * A deliberately tiny profile for tests that only care about one mechanism
+ * (skill-group selection, CSS parameterisation) and would otherwise hand-roll
+ * their own `Profile` literal. Pass `skills` to control the groups.
+ */
+export function minimalProfile(skills: SkillGroup[] = [{ label: 'Languages', items: ['Solidity'] }]): Profile {
+  return {
+    identity: { name: 'A B', headline: 'H', email: 'a@example.invalid', links: [] },
+    roles: [
+      {
+        id: 'r', company: 'C', title: 'T', start: '2020-01', end: null,
+        bullets: [{ id: 'r.a', text: 'Did a thing.', tags: [] }],
+      },
+    ],
+    projects: [],
+    skills,
+    education: [{ institution: 'I', qualification: 'Q', years: '2016' }],
+  };
+}
+
+/** A plan over `minimalProfile`, for the same reason. */
+export function minimalPlan(overrides: Partial<Plan> = {}): Plan {
+  return { variant: 'smart-contract', headline: 'X', bullets: [{ id: 'r.a' }], ...overrides };
+}

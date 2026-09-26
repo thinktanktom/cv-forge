@@ -8,14 +8,9 @@ import { pdfPageCount } from '../src/render.js';
  * `pdfinfo` on real one- and two-page Chromium output before being wired in.
  */
 describe('pdfPageCount', () => {
-  it('reads the page-tree root count', () => {
-    const pdf = Buffer.from('%PDF-1.4\n1 0 obj << /Type /Pages /Kids [2 0 R] /Count 1 >> endobj\n');
-    expect(pdfPageCount(pdf)).toBe(1);
-  });
-
-  it('reads a multi-page count', () => {
-    const pdf = Buffer.from('%PDF-1.4\n1 0 obj << /Type /Pages /Kids [2 0 R 3 0 R] /Count 2 >> endobj\n');
-    expect(pdfPageCount(pdf)).toBe(2);
+  it.each([1, 2, 7])('reads %i from the page-tree root count', (pages) => {
+    const pdf = Buffer.from(`%PDF-1.4\n1 0 obj << /Type /Pages /Count ${pages} >> endobj\n`);
+    expect(pdfPageCount(pdf)).toBe(pages);
   });
 
   it('takes the largest count when nested page trees are present', () => {
