@@ -47,8 +47,15 @@ fictional fixtures, no personal data.
    check; do not weaken its patterns to make a commit pass. If it fires, the
    data belongs in `$CV_DATA`, not here.
 
+9. **Only `render.ts` may name a DOM global.** `tsconfig.lib` includes "DOM"
+   so the `page.evaluate` closures type-check; everything else is Node, where
+   `document` is a runtime crash rather than a compile error.
+   `test/dom-containment.test.ts` enforces it.
+
 ## Off limits
 - `flake.nix` pinning without checking that the browser/font wiring still works
   (`npm run test:render`).
+- `tsconfig.json` `lib` — removing "DOM" breaks the typed page closures in
+  render.ts; adding libs beyond it widens what every module can reach.
 - `package.json` `playwright-core` version — it must match nixpkgs
   `playwright-driver` (currently 1.63.0) or the driver refuses to start.
