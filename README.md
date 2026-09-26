@@ -335,4 +335,4 @@ ceiling, and that only `render.ts` may name a DOM global.
 
 ## Licence
 
-Not yet chosen — add a `LICENSE` file before relying on this being reusable.
+[MIT](LICENSE).
