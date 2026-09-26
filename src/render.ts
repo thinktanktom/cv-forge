@@ -274,22 +274,21 @@ export async function renderPdf(html: string, pdfPath: string): Promise<void> {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'load' });
 
-    // These run inside the page, not Node, so they are passed as strings
-    // rather than typed closures — this repo's tsconfig has no "dom" lib
-    // (by design; render.ts is the only file that ever touches a page), and
-    // Playwright's string form of `evaluate` sidesteps that cleanly.
-    const family = await page.evaluate<string>(
-      '(function () {' +
-        'var raw = getComputedStyle(document.body).fontFamily;' +
-        'return (raw.split(",")[0] || "").trim().replace(/^["\']|["\']$/g, "");' +
-        '})()',
-    );
+    // These closures run inside the page, not in Node. "DOM" is in
+    // tsconfig.lib so they type-check like any other code — this assertion is
+    // the only thing standing between a missing font and a silently two-page
+    // CV, so it is the last place that should be unchecked strings.
+    const family = await page.evaluate(() => {
+      const raw = getComputedStyle(document.body).fontFamily;
+      return (raw.split(',')[0] ?? '').trim().replace(/^["']|["']$/g, '');
+    });
     if (!family) {
       throw new Error('Could not determine the body font family from the rendered page.');
     }
 
-    const resolved = await page.evaluate<boolean>(
-      `document.fonts.check(${JSON.stringify(`12pt "${family}"`)})`,
+    const resolved = await page.evaluate(
+      (spec: string) => document.fonts.check(spec),
+      `12pt "${family}"`,
     );
     if (!resolved) {
       throw new Error(
