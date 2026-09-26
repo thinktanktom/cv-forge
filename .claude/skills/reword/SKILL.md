@@ -26,8 +26,8 @@ user's Claude plan, rather than through an API.
   "headline": "Staff Smart Contract Engineer",
   "summary": "...",
   "bullets": [
-    { "id": "bankx.incident-response", "rewrite": "..." },
-    { "id": "bankx.multichain-deploy" }
+    { "id": "northwind.audit-remediation", "rewrite": "..." },
+    { "id": "northwind.multichain" }
   ],
   "coverLetter": "optional"
 }

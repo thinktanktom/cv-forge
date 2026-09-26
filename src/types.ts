@@ -8,7 +8,7 @@
  */
 
 export interface Bullet {
-  /** Stable, human-authored, e.g. "bankx.audit-remediation". Never generated. */
+  /** Stable, human-authored, e.g. "northwind.audit-remediation". Never generated. */
   id: string;
   text: string;
   tags: string[];
