@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { parseArgs } from 'node:util';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, openSync, readSync, closeSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { loadProfile, allBullets } from './profile.js';
@@ -11,12 +11,15 @@ import { render } from './render.js';
 import { registeredEngines, type EngineName } from './selector.js';
 import { knownVariants } from './variants.js';
 import type { Plan } from './types.js';
+import { resolvePosting, type Posting } from './jd-input.js';
 import './selectors/index.js';
 
 const USAGE = `cv — build a job-specific CV from a structured profile
 
-  cv new      --company <c> --role <r> [--variant <v>] [--url <u>] [--file <f>]
-              Reads the job description from --file, or from stdin.
+  cv new      [<url|->] [--file <f>] [--company <c>] [--role <r>] [--variant <v>]
+              Give it a posting URL or the description itself, as an argument,
+              a --file, or on stdin. It fetches URLs, and works out the company
+              and role for you; the flags are only overrides.
 
   cv select   <slug> [--engine ${registeredEngines().join('|')}] [--top <n>]
               Ranks your bullets against the JD -> shortlist.json
@@ -41,6 +44,48 @@ async function readStdin(): Promise<string> {
   const chunks: Buffer[] = [];
   for await (const chunk of process.stdin) chunks.push(Buffer.from(chunk));
   return Buffer.concat(chunks).toString('utf8');
+}
+
+/**
+ * Reads one line from the terminal even when stdin is a pipe — which it is
+ * whenever someone runs `pbpaste | cv new`. Returns undefined with no tty.
+ */
+function askTty(question: string): string | undefined {
+  let fd: number;
+  try {
+    fd = openSync('/dev/tty', 'r+');
+  } catch {
+    return undefined;
+  }
+  try {
+    writeFileSync(fd, question);
+    const buf = Buffer.alloc(1024);
+    let out = '';
+    for (;;) {
+      const n = readSync(fd, buf, 0, buf.length, null);
+      if (n === 0) break;
+      out += buf.subarray(0, n).toString('utf8');
+      if (out.includes('\n')) break;
+    }
+    const answer = out.split('\n')[0]?.trim() ?? '';
+    return answer === '' ? undefined : answer;
+  } catch {
+    return undefined;
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/** Flags win, then whatever the posting told us, then the user. */
+function settle(label: string, fromFlag: string | undefined, fromPosting: string | undefined): string {
+  const value = fromFlag ?? fromPosting ?? askTty(`${label}? `);
+  if (!value) {
+    fail(
+      `could not work out the ${label.toLowerCase()} and there is no terminal to ask on. ` +
+        `Pass --${label.toLowerCase()}.`,
+    );
+  }
+  return value;
 }
 
 function slugArg(positionals: string[]): string {
@@ -81,15 +126,38 @@ async function main(): Promise<void> {
 
   switch (command) {
     case 'new': {
-      const company = values.company ?? fail('--company is required');
-      const role = values.role ?? fail('--role is required');
-      const jd = values.file ? readFileSync(values.file, 'utf8') : await readStdin();
-      if (!jd.trim()) fail('no job description: pass --file <path> or pipe it on stdin');
+      // A URL or the description itself, from an argument, a file, or stdin.
+      const raw =
+        values.file ? readFileSync(values.file, 'utf8')
+        : positionals[1] && positionals[1] !== '-' ? positionals[1]
+        : await readStdin();
+      if (!raw.trim()) {
+        fail('no input: give a posting URL or the description, as an argument, --file, or on stdin');
+      }
+
+      let posting: Posting;
+      try {
+        posting = await resolvePosting(raw);
+      } catch (err) {
+        fail(err instanceof Error ? err.message : String(err));
+      }
+
+      const company = settle('Company', values.company, posting.company);
+      const role = settle('Role', values.role, posting.role);
+      const url = values.url ?? posting.url;
+
       const { slug, dir } = await createApplication({
-        company, role, jd,
-        ...(values.url ? { url: values.url } : {}),
+        company, role, jd: posting.description,
+        ...(url ? { url } : {}),
         ...(values.variant ? { variant: values.variant } : {}),
       });
+
+      if (posting.source !== 'pasted') {
+        process.stderr.write(
+          `fetched via ${posting.source}: ${role} @ ${company}` +
+            `${posting.location ? ` (${posting.location})` : ''}\n`,
+        );
+      }
       process.stdout.write(`${slug}\n${dir}\n`);
       return;
     }
