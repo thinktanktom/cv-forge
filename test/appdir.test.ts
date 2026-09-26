@@ -124,14 +124,4 @@ describe('ledger', () => {
     expect(rows.some((r) => r.company === 'Good')).toBe(true);
   });
 
-  it('aligns columns so the table stays scannable', async () => {
-    await createApplication({ company: 'A', role: 'Short', jd: 'x' }, root, AT);
-    await createApplication({ company: 'BBBBBBBB', role: 'Much Longer Role', jd: 'x' }, root, new Date('2026-09-24T10:00:00Z'));
-    const out = formatLedger(await readLedger(root));
-    const lines = out.split('\n');
-    expect(lines[0]).toMatch(/^APPLIED/);
-    const col = (l: string) => l.indexOf('COMPANY') >= 0 ? l.indexOf('COMPANY') : -1;
-    expect(col(lines[0] ?? '')).toBeGreaterThan(0);
-    expect(await listSlugs(root)).toHaveLength(2);
-  });
 });

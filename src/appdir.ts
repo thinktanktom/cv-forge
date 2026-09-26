@@ -36,6 +36,11 @@ export interface Status {
   history: StatusEvent[];
 }
 
+/** YYYY-MM-DD. The only date format this repo writes. */
+function isoDate(at: Date): string {
+  return at.toISOString().slice(0, 10);
+}
+
 export function dataRoot(): string {
   const root = process.env['CV_DATA'];
   if (!root) {
@@ -53,7 +58,7 @@ export function applicationsRoot(root = dataRoot()): string {
 
 /** "Aave", "Staff Smart Contract Engineer" -> "2026-09-25-aave-staff-smart-contract-engineer" */
 export function slugFor(company: string, role: string, today = new Date()): string {
-  const date = today.toISOString().slice(0, 10);
+  const date = isoDate(today);
   const part = (s: string) =>
     s
       .normalize('NFKD')
@@ -109,7 +114,7 @@ export async function createApplication(
     ...(input.url ? { url: input.url } : {}),
     ...(input.variant ? { variant: input.variant } : {}),
     stage: 'draft',
-    history: [{ date: today.toISOString().slice(0, 10), stage: 'draft' }],
+    history: [{ date: isoDate(today), stage: 'draft' }],
   };
   await writeStatus(dir, status);
   return { slug, dir };
@@ -136,7 +141,7 @@ export async function writeStatus(dir: string, status: Status): Promise<void> {
 export async function advance(dir: string, stage: Stage, note?: string, today = new Date()): Promise<Status> {
   const status = await readStatus(dir);
   const event: StatusEvent = {
-    date: today.toISOString().slice(0, 10),
+    date: isoDate(today),
     stage,
     ...(note ? { note } : {}),
   };

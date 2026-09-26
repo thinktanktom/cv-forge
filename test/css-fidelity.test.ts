@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { renderSheetHtml } from '../src/render.js';
-import type { Profile } from '../src/types.js';
+import { minimalProfile } from './fixtures.js';
 
 /**
  * Regression guard for AGENTS.md rule 3: the print CSS is tuned to fit A4 in
@@ -20,18 +20,7 @@ import type { Profile } from '../src/types.js';
 
 const sourceDir = process.env['CV_SOURCE_DESIGNS'];
 
-const profile: Profile = {
-  identity: { name: 'A B', headline: 'H', email: 'a@example.invalid', links: [] },
-  roles: [
-    {
-      id: 'r', company: 'C', title: 'T', start: '2020-01', end: null,
-      bullets: [{ id: 'r.a', text: 'Did a thing.', tags: [] }],
-    },
-  ],
-  projects: [],
-  skills: [{ label: 'L', items: ['x'] }],
-  education: [{ institution: 'I', qualification: 'Q', years: '2016' }],
-};
+const profile = minimalProfile();
 
 /** Anchored at line start: the file's header comment mentions "<style>" too. */
 function styleBlock(html: string): string {

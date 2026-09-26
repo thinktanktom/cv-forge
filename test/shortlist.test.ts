@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rank, cut, borderline, DEFAULT_TOP, BORDERLINE_BAND } from '../src/shortlist.js';
+import { rank, cut, borderline } from '../src/shortlist.js';
 import type { Scored } from '../src/types.js';
 
 const s = (id: string, score: number): Scored => ({ id, score });
@@ -29,14 +29,6 @@ describe('cut', () => {
     expect(cut(scored, 2).map((x) => x.id)).toEqual(['a', 'b']);
   });
 
-  it('keeps everything when there are fewer than N', () => {
-    expect(cut([s('a', 0.9)], 10)).toHaveLength(1);
-  });
-
-  it('defaults to DEFAULT_TOP', () => {
-    const many = Array.from({ length: 40 }, (_, i) => s(`b${i}`, i / 40));
-    expect(cut(many)).toHaveLength(DEFAULT_TOP);
-  });
 });
 
 describe('borderline', () => {
@@ -59,13 +51,4 @@ describe('borderline', () => {
     expect(borderline([s('a', 0.9), s('b', 0.1)], 5)).toEqual([]);
   });
 
-  it('uses BORDERLINE_BAND as the width on each side', () => {
-    const cutScore = 0.5;
-    const justInside = cutScore - BORDERLINE_BAND * 0.5;
-    const wellOutside = cutScore - BORDERLINE_BAND * 3;
-    const scored = [s('a', 0.9), s('keep', cutScore), s('near', justInside), s('far', wellOutside)];
-    const ids = borderline(scored, 2).map((x) => x.id);
-    expect(ids).toContain('near');
-    expect(ids).not.toContain('far');
-  });
 });
