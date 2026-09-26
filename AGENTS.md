@@ -43,6 +43,10 @@ fictional fixtures, no personal data.
    write it from tests, and never commit anything under `profile/` or
    `applications/`.
 
+8. **This repo is public.** `test/no-personal-data.test.ts` is the mechanical
+   check; do not weaken its patterns to make a commit pass. If it fires, the
+   data belongs in `$CV_DATA`, not here.
+
 ## Off limits
 - `flake.nix` pinning without checking that the browser/font wiring still works
   (`npm run test:render`).

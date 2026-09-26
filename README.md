@@ -23,6 +23,11 @@ person, so a reviewer can clone this and actually run it.
 `CV_DATA` points at the data repo root: the profile is `$CV_DATA/profile`
 and applications land in `$CV_DATA/applications/<slug>/`.
 
+The split is enforced, not just intended: `test/no-personal-data.test.ts`
+scans what git actually tracks for data-repo paths, credential-shaped strings
+and non-fixture email addresses, and CI runs it on every push. Verified
+against deliberate violations of each kind, not just against a clean tree.
+
 ## Two guards that matter
 
 `render` refuses to hand you a broken CV rather than failing quietly:
