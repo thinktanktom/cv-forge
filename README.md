@@ -125,17 +125,33 @@ cv validate
 
 ### 1. Capture the job
 
+Give it a posting URL, or the description itself. It works out the rest.
+
 ```sh
-cv new --company "Aave Labs" \
-       --role "Staff Smart Contract Engineer" \
-       --variant smart-contract \
-       --file jd.md
+cv new https://jobs.ashbyhq.com/acme/956e9e43-...     # fetches it
+pbpaste | cv new                                      # URL or description, either way
+cv new --file jd.md
 ```
 
-Or pipe it: `pbpaste | cv new --company Aave --role "Staff SC Engineer"`.
+```
+fetched via json-ld: Senior Software Engineer, Core @ Ava Labs
+2026-09-26-ava-labs-senior-software-engineer-core
+/home/you/dev/cv-data/applications/2026-09-26-ava-labs-senior-software-engineer-core
+```
 
-Creates `$CV_DATA/applications/2026-09-25-aave-labs-staff-smart-contract-engineer/`
-containing `jd.md` and `status.yaml`, and prints the slug.
+**You don't pass the company or the role.** For a fetched posting they come from
+the page's `JobPosting` metadata — the schema Ashby, Greenhouse and Lever all
+publish, which is why there's no per-board adapter here. For pasted text they're
+read from the opening line when it's a recognisable shape (`Role — Company`,
+`Role at Company`, `Company: Role`). If neither works you're asked once, on the
+terminal — which works even when the description arrived through a pipe.
+`--company`, `--role` and `--variant` remain as overrides.
+
+Pages that render entirely client-side carry no metadata. Those fail with a
+message telling you to paste instead, and `--url` still records the link in the
+ledger. Fetching a posting is a read: nothing is submitted anywhere.
+
+Creates `$CV_DATA/applications/<slug>/` containing `jd.md` and `status.yaml`.
 
 ### 2. Rank your bullets against it
 
