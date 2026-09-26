@@ -3,12 +3,14 @@
 Turns a structured profile into a job-specific CV, as a build step instead of a
 browser round-trip.
 
-    cv new <url|->      capture the job description into a dated folder
-    cv select <slug>    rank your bullets against it      -> shortlist.json
-    /reword <slug>      rewrite the shortlist (in-session) -> plan.json
-    cv render <slug>    validate every id, then html + pdf + docx + cover
+    cv new --company <c> --role <r> [--variant <v>] --file <jd.md>
+    cv select <slug> [--engine jev|tag|claude] [--top <n>]   -> shortlist.json
+    /reword <slug>      rewrite the shortlist (in a Claude Code session) -> plan.json
+    cv render <slug>    validate every id, then html + pdf + docx (+ cover)
     cv open <slug>      open the folder
+    cv status <slug> <stage> [note]
     cv log              the application ledger
+    cv validate         load and check the profile
 
 ## Two repos on purpose
 
@@ -17,6 +19,19 @@ separate private repo, located via `CV_DATA`. Nothing personal belongs here —
 `profile/` and `applications/` are gitignored so a stray `git add -A` cannot
 put them in a public repo. Tests run against `fixtures/persona/`, a fictional
 person, so a reviewer can clone this and actually run it.
+
+`CV_DATA` points at the data repo root: the profile is `$CV_DATA/profile`
+and applications land in `$CV_DATA/applications/<slug>/`.
+
+## Two guards that matter
+
+`render` refuses to hand you a broken CV rather than failing quietly:
+
+- **Unknown bullet id** — rejected before anything is drawn. See below.
+- **Page overflow** — the template is tuned for one A4 sheet, and overflowing
+  is silent, so the rendered page count is checked and anything over
+  `maxPages` (default 1) throws. The font assertion catches the most common
+  *cause* of a two-page CV; this catches the thing itself.
 
 ## The one rule
 

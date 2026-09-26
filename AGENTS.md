@@ -14,6 +14,9 @@ fictional fixtures, no personal data.
 - `src/types.ts` — the contracts. Read this first.
 - `src/selector.ts` — engine registry.
 - `src/selectors/{tag,jev,claude}.ts` — the three engines.
+- `src/shortlist.ts` — ranking, the cut, and the borderline band.
+- `src/cli.ts` — the `cv` command.
+- `.claude/skills/reword/` — the in-session generative leg.
 - `src/render.ts` — plan + template -> html/pdf/docx.
 - `src/ledger.ts`, `src/cli.ts`
 - `templates/` — `sheet.html.eta` carries the tuned print CSS verbatim.
@@ -30,7 +33,13 @@ fictional fixtures, no personal data.
    nudges are the only intended variables.
 4. **`tag` must never require network or credentials.** It is the fallback that
    makes the other engines optional.
-5. Personal data lives in `$CV_DATA` (a separate private repo). Never read or
+5. **Cut shortlists by rank, never by an absolute score threshold.** Jev's
+   measured margin near the cut is 0.01-0.05 and probabilities drift between
+   calls, so a threshold drops good bullets silently and differently each run.
+   See `docs/jev-api.md`.
+6. **`render` enforces a page ceiling.** Do not raise `maxPages` or restyle
+   the template to make content fit; drop a bullet in the plan instead.
+7. Personal data lives in `$CV_DATA` (a separate private repo). Never read or
    write it from tests, and never commit anything under `profile/` or
    `applications/`.
 

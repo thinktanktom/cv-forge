@@ -3,9 +3,11 @@
  * YAML files: `identity.yaml`, `roles.yaml`, `projects.yaml`, `skills.yaml`,
  * `education.yaml`.
  *
- * The profile directory is resolved from `CV_DATA` when that env var is set;
+ * The profile directory is `<CV_DATA>/profile` when that env var is set;
  * otherwise the caller must pass an explicit path (tests pass
- * `fixtures/persona`).
+ * `fixtures/persona`). CV_DATA points at the *data repo root*, matching
+ * `appdir.ts`, which reads `<CV_DATA>/applications` — one variable, one
+ * meaning.
  *
  * Bullet ids are the primary key of the whole system (see the comment on
  * `Bullet.id` in `types.ts`), so this module fails loudly — throws, does not
@@ -109,7 +111,7 @@ const PROFILE_FILES = {
 export function resolveProfileDir(explicitPath?: string): string {
   const fromEnv = process.env.CV_DATA;
   if (fromEnv !== undefined && fromEnv.trim() !== '') {
-    return fromEnv;
+    return join(fromEnv, 'profile');
   }
   if (explicitPath !== undefined && explicitPath.trim() !== '') {
     return explicitPath;

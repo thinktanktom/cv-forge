@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -73,12 +73,37 @@ describe('loadProfile', () => {
     );
   });
 
-  it('resolves the directory from CV_DATA when set, ignoring the explicit path', () => {
+  it('reads <CV_DATA>/profile when CV_DATA is set, ignoring the explicit path', () => {
+    /*
+     * CV_DATA points at the data REPO ROOT, not at the profile directory:
+     * appdir.ts reads <CV_DATA>/applications, so one variable has to mean one
+     * thing. This asserts the join rather than the old bare-path behaviour.
+     */
+    const root = mkdtempSync(join(tmpdir(), 'cvdata-'));
+    mkdirSync(join(root, 'profile'), { recursive: true });
+    for (const f of ['identity.yaml','roles.yaml','projects.yaml','skills.yaml','education.yaml']) {
+      copyFileSync(join(FIXTURES_DIR, f), join(root, 'profile', f));
+    }
     const original = process.env.CV_DATA;
-    process.env.CV_DATA = FIXTURES_DIR;
+    process.env.CV_DATA = root;
     try {
       const profile = loadProfile('/does/not/exist');
       expect(profile.identity.name).toBe('Alex Rivera');
+    } finally {
+      if (original === undefined) {
+        delete process.env.CV_DATA;
+      } else {
+        process.env.CV_DATA = original;
+      }
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('points at the profile subdirectory in its error when CV_DATA is wrong', () => {
+    const original = process.env.CV_DATA;
+    process.env.CV_DATA = '/does/not/exist';
+    try {
+      expect(() => loadProfile()).toThrow(/\/does\/not\/exist\/profile\/identity\.yaml/);
     } finally {
       if (original === undefined) {
         delete process.env.CV_DATA;
